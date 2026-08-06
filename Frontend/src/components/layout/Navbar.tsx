@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X, Brain, Bell, User, LogOut, Settings, FlaskConical, GraduationCap } from 'lucide-react';
+import {
+  Menu,
+  X,
+  Brain,
+  User,
+  LogOut,
+  Settings,
+  FlaskConical,
+  GraduationCap,
+  LayoutDashboard,
+  Target,
+  Trophy,
+} from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { logout } from '../../features/auth/authSlice';
+import NotificationDropdown from './NotificationDropdown';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,13 +64,15 @@ const Navbar: React.FC = () => {
               <NavLink
                 to="/dashboard"
                 className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-arctic font-bold' : 'text-slopes hover:text-arctic'
+                  `text-sm font-medium transition-colors flex items-center gap-1.5 font-semibold ${
+                    isActive ? 'text-cyan-400 font-bold border-b-2 border-cyan-400 pb-0.5' : 'text-slopes hover:text-arctic'
                   }`
                 }
               >
-                Dashboard
+                <LayoutDashboard className="w-4 h-4 text-cyan-400" />
+                <span>Dashboard</span>
               </NavLink>
+
               <NavLink
                 to="/coach"
                 className={({ isActive }) =>
@@ -67,38 +82,43 @@ const Navbar: React.FC = () => {
                 }
               >
                 <GraduationCap className="w-4 h-4 text-blue-400" />
-                ML Coach
+                <span>ML Coach</span>
               </NavLink>
+
               <NavLink
                 to="/playground"
                 className={({ isActive }) =>
                   `text-sm font-medium transition-colors flex items-center gap-1.5 font-semibold ${
-                    isActive ? 'text-emerald-400 font-bold' : 'text-slopes hover:text-arctic'
+                    isActive ? 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5' : 'text-slopes hover:text-arctic'
                   }`
                 }
               >
                 <FlaskConical className="w-4 h-4 text-emerald-400" />
-                Playground
+                <span>Playground</span>
               </NavLink>
+
               <NavLink
                 to="/practice"
                 className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-arctic font-bold' : 'text-slopes hover:text-arctic'
+                  `text-sm font-medium transition-colors flex items-center gap-1.5 font-semibold ${
+                    isActive ? 'text-purple-400 font-bold border-b-2 border-purple-400 pb-0.5' : 'text-slopes hover:text-arctic'
                   }`
                 }
               >
-                Practice
+                <Target className="w-4 h-4 text-purple-400" />
+                <span>Practice</span>
               </NavLink>
+
               <NavLink
                 to="/leaderboard"
                 className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-arctic font-bold' : 'text-slopes hover:text-arctic'
+                  `text-sm font-medium transition-colors flex items-center gap-1.5 font-semibold ${
+                    isActive ? 'text-yellow-400 font-bold border-b-2 border-yellow-400 pb-0.5' : 'text-slopes hover:text-arctic'
                   }`
                 }
               >
-                Leaderboard
+                <Trophy className="w-4 h-4 text-yellow-400" />
+                <span>Leaderboard</span>
               </NavLink>
             </div>
           )}
@@ -107,15 +127,12 @@ const Navbar: React.FC = () => {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <button className="p-2 rounded-xl text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors relative">
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-info rounded-full"></span>
-                </button>
+                <NotificationDropdown />
 
                 <div className="relative">
                   <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center space-x-2 p-1 rounded-xl hover:bg-mountainside/60 transition-colors border border-transparent hover:border-mountainside"
+                    className="flex items-center space-x-2 p-1 rounded-xl hover:bg-mountainside/60 transition-colors border border-transparent hover:border-mountainside cursor-pointer"
                   >
                     {user?.avatar ? (
                       <img src={user.avatar} alt={user.firstName} className="w-8 h-8 rounded-full object-cover border border-apres" />
@@ -137,7 +154,7 @@ const Navbar: React.FC = () => {
                         className="flex items-center space-x-2 px-4 py-3 text-sm text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors"
                         onClick={() => setIsOpen(false)}
                       >
-                        <User className="w-4 h-4" />
+                        <User className="w-4 h-4 text-emerald-400" />
                         <span>Profile</span>
                       </Link>
                       <Link
@@ -145,12 +162,12 @@ const Navbar: React.FC = () => {
                         className="flex items-center space-x-2 px-4 py-3 text-sm text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors"
                         onClick={() => setIsOpen(false)}
                       >
-                        <Settings className="w-4 h-4" />
+                        <Settings className="w-4 h-4 text-cyan-400" />
                         <span>Settings</span>
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center space-x-2 px-4 py-3 text-sm text-error hover:bg-mountainside/60 transition-colors border-t border-mountainside"
+                        className="w-full flex items-center space-x-2 px-4 py-3 text-sm text-error hover:bg-mountainside/60 transition-colors border-t border-mountainside cursor-pointer"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Logout</span>
@@ -196,32 +213,43 @@ const Navbar: React.FC = () => {
         >
           <Link
             to="/dashboard"
-            className="block px-4 py-3 rounded-xl text-sm font-medium text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-cyan-400 hover:bg-mountainside/60 transition-colors font-semibold"
             onClick={() => setIsOpen(false)}
           >
-            Dashboard
+            <LayoutDashboard className="w-4 h-4 text-cyan-400" />
+            <span>Dashboard</span>
+          </Link>
+          <Link
+            to="/coach"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-blue-400 hover:bg-mountainside/60 transition-colors font-semibold"
+            onClick={() => setIsOpen(false)}
+          >
+            <GraduationCap className="w-4 h-4 text-blue-400" />
+            <span>ML Coach</span>
           </Link>
           <Link
             to="/playground"
-            className="block px-4 py-3 rounded-xl text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-mountainside/60 transition-colors flex items-center gap-2 font-semibold"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-emerald-400 hover:bg-mountainside/60 transition-colors font-semibold"
             onClick={() => setIsOpen(false)}
           >
-            <FlaskConical className="w-4 h-4" />
-            Playground
+            <FlaskConical className="w-4 h-4 text-emerald-400" />
+            <span>Playground</span>
           </Link>
           <Link
             to="/practice"
-            className="block px-4 py-3 rounded-xl text-sm font-medium text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-purple-400 hover:bg-mountainside/60 transition-colors font-semibold"
             onClick={() => setIsOpen(false)}
           >
-            Practice
+            <Target className="w-4 h-4 text-purple-400" />
+            <span>Practice</span>
           </Link>
           <Link
             to="/leaderboard"
-            className="block px-4 py-3 rounded-xl text-sm font-medium text-slopes hover:text-arctic hover:bg-mountainside/60 transition-colors"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-yellow-400 hover:bg-mountainside/60 transition-colors font-semibold"
             onClick={() => setIsOpen(false)}
           >
-            Leaderboard
+            <Trophy className="w-4 h-4 text-yellow-400" />
+            <span>Leaderboard</span>
           </Link>
         </motion.div>
       )}
