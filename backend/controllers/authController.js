@@ -2,83 +2,81 @@ const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken } = require('../utils/token');
 const sendEmail = require('../utils/sendEmail');
 
-// register
+// Register new user
 exports.register = async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
-  
-  // Validate input
+
   if (!email || !password || !firstName || !lastName) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
-    // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
-    
-    let user = await User.findOne({ email: normalizedEmail });
-    if (user) return res.status(400).json({ message: 'Email already in use' });
 
-    user = new User({ 
-      email: normalizedEmail, 
-      password, 
-      firstName: firstName.trim(), 
-      lastName: lastName.trim() 
+    let existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email is already registered' });
+    }
+
+    const user = new User({
+      email: normalizedEmail,
+      password,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      isEmailVerified: true, // Default to true so users can immediately log in across environments
     });
+
     user.generateEmailVerification();
     await user.save();
 
-    // send verification email (simple link)
-    const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${user.emailVerificationToken}`;
-    let verificationEmailSent = true;
-    try {
-      await sendEmail({
-        to: normalizedEmail,
-        subject: 'Verify your email',
-        text: `Please verify your email by clicking the following link: ${verifyUrl}`,
-      });
-    } catch (mailErr) {
-      // Do not fail registration when SMTP is unavailable in local/dev setup.
-      verificationEmailSent = false;
-      console.error('Verification email send failed:', mailErr.message);
+    // Optionally attempt email verification send
+    if (process.env.EMAIL_HOST && process.env.EMAIL_USER) {
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${user.emailVerificationToken}`;
+      try {
+        await sendEmail({
+          to: normalizedEmail,
+          subject: 'Verify your ML Visual Lab account',
+          text: `Click the following link to verify your account: ${verifyUrl}`,
+        });
+      } catch (mailErr) {
+        console.warn('⚠️ Verification email send skipped/failed:', mailErr.message);
+      }
     }
 
-    if (!verificationEmailSent && process.env.NODE_ENV !== 'production') {
-      user.isEmailVerified = true;
-      user.emailVerificationToken = undefined;
-      await user.save();
-    }
-
-    // issue tokens on registration as well (frontend expects user and tokens)
+    // Issue access and refresh tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
+
     if (!Array.isArray(user.refreshTokens)) user.refreshTokens = [];
-    user.refreshTokens.push({ token: refreshToken, expires: Date.now() + 7 * 24 * 3600 * 1000 });
+    user.refreshTokens.push({ token: refreshToken, expires: new Date(Date.now() + 7 * 24 * 3600 * 1000) });
     await user.save();
+
+    console.log(`[AUTH] User registered successfully: ${user.email} (${user._id})`);
+
+    const userObject = user.toObject();
+
     res.status(201).json({
-      message: 'User registered. Please verify your email.',
-      user: user.toObject ? user.toObject() : user,
+      message: 'Account created successfully',
+      user: userObject,
       tokens: { accessToken, refreshToken },
     });
   } catch (err) {
-    console.error('Registration error:', err);
-    // Provide more detailed error messages
+    console.error('[AUTH ERROR] Registration failed:', err);
     if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ message: `${field} already exists` });
+      return res.status(400).json({ message: 'Email is already registered' });
     }
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((e) => e.message);
       return res.status(400).json({ message: messages.join(', ') });
     }
-    res.status(500).json({ message: 'Server error', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    res.status(500).json({ message: 'Server error during registration' });
   }
 };
 
-// login
+// Login user
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  
-  // Validate input
+
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
@@ -86,127 +84,151 @@ exports.login = async (req, res) => {
   try {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: normalizedEmail });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
     const match = await user.comparePassword(password);
-    if (!match) return res.status(400).json({ message: 'Invalid credentials' });
-
-    if (!user.isEmailVerified) {
-      return res.status(403).json({ message: 'Please verify your email before logging in' });
+    if (!match) {
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
+
+    // Update lastActive timestamp
+    user.lastActive = new Date();
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // store refresh token in DB
     if (!Array.isArray(user.refreshTokens)) user.refreshTokens = [];
-    user.refreshTokens.push({ token: refreshToken, expires: Date.now() + 7 * 24 * 3600 * 1000 });
+    user.refreshTokens.push({ token: refreshToken, expires: new Date(Date.now() + 7 * 24 * 3600 * 1000) });
     await user.save();
 
-    res.json({ user: user.toObject ? user.toObject() : user, tokens: { accessToken, refreshToken } });
+    console.log(`[AUTH] User logged in: ${user.email} (${user._id})`);
+
+    const userObject = user.toObject();
+
+    res.json({
+      message: 'Login successful',
+      user: userObject,
+      tokens: { accessToken, refreshToken },
+    });
   } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ message: 'Server error', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    console.error('[AUTH ERROR] Login failed:', err);
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
 
-// refresh token
+// Refresh Token
 exports.refreshToken = async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ message: 'Refresh token required' });
 
   try {
-    const payload = require('jsonwebtoken').verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const secret = process.env.REFRESH_TOKEN_SECRET || 'supersecretrefreshtoken';
+    const payload = require('jsonwebtoken').verify(refreshToken, secret);
     const user = await User.findById(payload.id);
-    if (!user) return res.status(401).json({ message: 'Invalid token' });
+    if (!user) return res.status(401).json({ message: 'Invalid token user' });
 
-    const stored = user.refreshTokens.find(rt => rt.token === refreshToken);
-    if (!stored) return res.status(401).json({ message: 'Refresh token not found' });
+    const stored = user.refreshTokens.find((rt) => rt.token === refreshToken);
+    if (!stored) return res.status(401).json({ message: 'Refresh token not found in user sessions' });
 
     const accessToken = generateAccessToken(user);
     res.json({ accessToken });
   } catch (err) {
-    console.error(err);
+    console.error('[AUTH ERROR] Refresh token verification failed:', err.message);
     res.status(401).json({ message: 'Token expired or invalid' });
   }
 };
 
-// logout
+// Logout
 exports.logout = async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.sendStatus(204);
   try {
+    const secret = process.env.REFRESH_TOKEN_SECRET || 'supersecretrefreshtoken';
     const payload = require('jsonwebtoken').decode(refreshToken);
-    const user = await User.findById(payload.id);
-    if (!user) return res.sendStatus(204);
-    user.refreshTokens = user.refreshTokens.filter(rt => rt.token !== refreshToken);
-    await user.save();
+    if (payload && payload.id) {
+      const user = await User.findById(payload.id);
+      if (user && Array.isArray(user.refreshTokens)) {
+        user.refreshTokens = user.refreshTokens.filter((rt) => rt.token !== refreshToken);
+        await user.save();
+      }
+    }
     res.sendStatus(204);
   } catch (err) {
-    console.error(err);
+    console.error('[AUTH ERROR] Logout error:', err.message);
     res.sendStatus(204);
   }
 };
 
-// forgot password
+// Forgot Password
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
   try {
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.status(200).json({ message: 'If the email exists, a reset link will be sent' });
 
     user.generatePasswordReset();
     await user.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${user.passwordResetToken}`;
-    try {
-      await sendEmail({
-        to: email,
-        subject: 'Password Reset',
-        text: `Reset your password: ${resetUrl}`,
-      });
-    } catch (mailErr) {
-      console.error('Password reset email send failed:', mailErr.message);
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${user.passwordResetToken}`;
+    if (process.env.EMAIL_HOST && process.env.EMAIL_USER) {
+      try {
+        await sendEmail({
+          to: normalizedEmail,
+          subject: 'Password Reset Request',
+          text: `Reset your password by clicking here: ${resetUrl}`,
+        });
+      } catch (mailErr) {
+        console.warn('Password reset email skipped/failed:', mailErr.message);
+      }
     }
 
     res.json({ message: 'Password reset link sent' });
   } catch (err) {
-    console.error(err);
+    console.error('[AUTH ERROR] Forgot password error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// reset password
+// Reset Password
 exports.resetPassword = async (req, res) => {
   const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ message: 'Token and new password required' });
+
   try {
     const user = await User.findOne({ passwordResetToken: token, passwordResetExpires: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset token' });
 
     user.password = password;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
 
-    res.json({ message: 'Password has been reset' });
+    res.json({ message: 'Password has been reset successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('[AUTH ERROR] Reset password error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// verify email
+// Verify Email
 exports.verifyEmail = async (req, res) => {
   const { token } = req.params;
   try {
     const user = await User.findOne({ emailVerificationToken: token });
-    if (!user) return res.status(400).json({ message: 'Invalid token' });
+    if (!user) return res.status(400).json({ message: 'Invalid verification token' });
+
     user.isEmailVerified = true;
     user.emailVerificationToken = undefined;
     await user.save();
-    res.json({ message: 'Email verified' });
+
+    res.json({ message: 'Email verified successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('[AUTH ERROR] Verify email error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
