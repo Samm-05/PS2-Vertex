@@ -435,21 +435,16 @@ Contributions are welcome!
 
 | Name | Role | GitHub |
 |---|---|---|
-| _Add name_ | _Frontend Developer_ | [@username](#) |
-| _Add name_ | _Backend Developer_ | [@username](#) |
-| _Add name_ | _ML / Visualization_ | [@username](#) |
-| _Add name_ | _UI/UX Design_ | [@username](#) |
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+| _Samyak Mahatme_ | _Team - leader_ | 
+| _Lavanya Vaidya_  | 
+| _Ashutosh Nanoti_ | 
+| _Raunak Pantawne_ |  
 
 ---
 
 <div align="center">
 
-**Built with ❤️ for [Hackathon Name] — Empowering learners to understand Machine Learning, one visualization at a time.**
+**Built with ❤️ for [Smackathon'26] — Empowering learners to understand Machine Learning, one visualization at a time.**
+
 
 </div>
