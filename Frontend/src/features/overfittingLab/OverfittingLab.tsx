@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { setConfig } from './overfittingSlice';
 import PageContainer from '../../components/layout/PageContainer';
 import Overfitting3DScene from './components/Overfitting3DScene';
 import PredictionCurveCanvas from './components/PredictionCurveCanvas';
@@ -8,13 +9,28 @@ import TrainingValidationChart from './components/TrainingValidationChart';
 import BiasVarianceChart from './components/BiasVarianceChart';
 import ControlPanel from './components/ControlPanel';
 import MathExplanationPanel from './components/MathExplanationPanel';
-import { Brain, ArrowLeft, Activity, Sliders, ShieldCheck } from 'lucide-react';
+import GuidedStepsPanel from './components/GuidedStepsPanel';
+import RecentExperimentsPanel from '../../components/experiments/RecentExperimentsPanel';
+import { SavedExperiment } from '../../services/experimentService';
+import { Brain, ArrowLeft } from 'lucide-react';
 import gsap from 'gsap';
 
 export const OverfittingLab: React.FC = () => {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { result } = useAppSelector((state) => state.overfitting);
+  const { result, config } = useAppSelector((state) => state.overfitting);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  const trainLoss = typeof result?.trainLoss === 'number' && !isNaN(result.trainLoss) ? result.trainLoss : 0;
+  const valLoss = typeof result?.valLoss === 'number' && !isNaN(result.valLoss)
+    ? result.valLoss
+    : (typeof (result as any)?.testLoss === 'number' ? (result as any).testLoss : 0);
+
+  const handleLoadExperiment = (exp: SavedExperiment) => {
+    if (exp.parameters) {
+      dispatch(setConfig(exp.parameters));
+    }
+  };
 
   useEffect(() => {
     if (!headerRef.current) return;
@@ -29,7 +45,7 @@ export const OverfittingLab: React.FC = () => {
   }, []);
 
   return (
-    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-4 px-4 space-y-4 font-sans select-none">
+    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-4 px-4 space-y-5 font-sans select-none">
       {/* Header */}
       <header
         ref={headerRef}
@@ -38,7 +54,7 @@ export const OverfittingLab: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-mountainside/50 text-slopes hover:text-arctic hover:bg-mountainside border border-apres/30 transition-all"
+            className="p-2.5 rounded-2xl bg-mountainside/50 text-slopes hover:text-arctic hover:bg-mountainside border border-apres/30 transition-all cursor-pointer"
             title="Return to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -63,49 +79,54 @@ export const OverfittingLab: React.FC = () => {
         <div className="lab-reveal flex items-center gap-3 font-mono text-xs">
           <div className="px-3 py-1.5 rounded-2xl bg-mountainside/50 border border-apres/30 flex items-center gap-2">
             <span className="text-apres">Train Loss:</span>
-            <span className="text-emerald-400 font-bold">{result.trainLoss.toFixed(4)}</span>
+            <span className="text-emerald-400 font-bold">{trainLoss.toFixed(4)}</span>
           </div>
           <div className="px-3 py-1.5 rounded-2xl bg-mountainside/50 border border-apres/30 flex items-center gap-2">
             <span className="text-apres">Val Loss:</span>
-            <span className="text-amber-400 font-bold">{result.valLoss.toFixed(4)}</span>
+            <span className="text-amber-400 font-bold">{valLoss.toFixed(4)}</span>
           </div>
         </div>
       </header>
 
-      {/* Main Body 3-Panel Layout */}
-      <main className="w-full space-y-4">
-        {/* Top 3D Viewport & Prediction Curve Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch min-h-[480px]">
-          {/* Left Column: 3D Surface */}
-          <div className="lg:col-span-6 h-full min-h-[400px]">
+      {/* Main Layout Grid */}
+      <main className="space-y-6">
+        {/* Step-by-Step Guided Walkthrough & Verification Card */}
+        <GuidedStepsPanel />
+
+        {/* Top 3D & 2D Model Visualization Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch min-h-[500px]">
+          {/* Left 3D Loss Surface Scene (7 cols) */}
+          <div className="lg:col-span-7 h-full">
             <Overfitting3DScene />
           </div>
 
-          {/* Right Column: 2D Prediction Curve Plot */}
-          <div className="lg:col-span-6 h-full">
+          {/* Right 2D Prediction Curve Canvas (5 cols) */}
+          <div className="lg:col-span-5 h-full">
             <PredictionCurveCanvas />
           </div>
         </div>
 
-        {/* Middle Row: Control Panel & Math Formulation */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-6">
+        {/* Middle Hyperparameter Control & Math Explanation */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Hyperparameter Slider Controls (5 cols) */}
+          <div className="lg:col-span-5 space-y-5">
             <ControlPanel />
           </div>
-          <div className="lg:col-span-6">
+
+          {/* Right Math & Regime Explanation (7 cols) */}
+          <div className="lg:col-span-7">
             <MathExplanationPanel />
           </div>
         </div>
 
-        {/* Bottom Row: Loss Trajectory & Bias-Variance Tradeoff Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-6">
-            <TrainingValidationChart />
-          </div>
-          <div className="lg:col-span-6">
-            <BiasVarianceChart />
-          </div>
+        {/* Bottom Dual Graphs: Training vs Validation Curve & Bias-Variance Tradeoff */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <TrainingValidationChart />
+          <BiasVarianceChart />
         </div>
+
+        {/* Recent Experiments Panel */}
+        <RecentExperimentsPanel algorithm="overfitting" onLoadExperiment={handleLoadExperiment} />
       </main>
     </PageContainer>
   );
