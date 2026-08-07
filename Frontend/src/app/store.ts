@@ -11,6 +11,7 @@ import linearRegressionReducer from '../features/linearRegression/linearRegressi
 import logisticRegressionReducer from '../features/logisticRegression/logisticRegressionSlice';
 import neuralNetworkReducer from '../features/neuralNetwork/neuralNetworkSlice';
 import overfittingReducer from '../features/overfittingLab/overfittingSlice';
+import kmeansReducer from '../features/kmeansLab/kmeansSlice';
 import coachReducer from '../features/coach/coachSlice';
 
 export const store = configureStore({
@@ -23,6 +24,7 @@ export const store = configureStore({
     logisticRegression: logisticRegressionReducer,
     neuralNetwork: neuralNetworkReducer,
     overfitting: overfittingReducer,
+    kmeans: kmeansReducer,
     practice: practiceReducer,
     leaderboard: leaderboardReducer,
     profile: profileReducer,
