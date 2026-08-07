@@ -10,6 +10,8 @@ import {
   Sparkles,
   Plus,
   FileSpreadsheet,
+  Save,
+  FileText,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../../app/hooks';
 import {
@@ -22,6 +24,10 @@ import {
 import { TUTORIAL_STEPS } from '../utils/tutorialData';
 import { soundFx } from '../../gradientDescent/utils/soundEffects';
 import { DatasetPresetType } from '../types';
+import { experimentService } from '../../../services/experimentService';
+import { toast } from 'react-hot-toast';
+import Button from '../../../components/ui/Button';
+import { UniversalReportModal } from '../../../components/reports/UniversalReportModal';
 
 export const LeftPanel: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -32,11 +38,23 @@ export const LeftPanel: React.FC = () => {
   const completedTutorialSteps = lrState?.completedTutorialSteps ?? [];
   const params = lrState?.params;
   const points = lrState?.points ?? [];
+  const steps = lrState?.steps ?? [];
+  const currentStepIndex = lrState?.currentStepIndex ?? 0;
 
   const [newX, setNewX] = useState('2.0');
   const [newY, setNewY] = useState('3.5');
+  const [saving, setSaving] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   if (!params) return null;
+
+  const currentStep = steps[currentStepIndex] || steps[0] || {
+    w: 0,
+    b: 0,
+    mseLoss: 0,
+    gradW: 0,
+    gradB: 0,
+  };
 
   const activeTutorial = TUTORIAL_STEPS[currentTutorialStep] || TUTORIAL_STEPS[0];
   const isCompleted = completedTutorialSteps.includes(currentTutorialStep);
@@ -67,14 +85,46 @@ export const LeftPanel: React.FC = () => {
     }
   };
 
+  const handleSaveExperiment = async () => {
+    setSaving(true);
+    const toastId = toast.loading('Saving Linear Regression experiment...');
+    try {
+      await experimentService.saveExperiment({
+        algorithm: 'linear-regression',
+        title: `Linear Regression (α=${params.learningRate}, Epochs=${params.epochs})`,
+        parameters: {
+          learningRate: params.learningRate,
+          epochs: params.epochs,
+          datasetSize: params.datasetSize,
+          noise: params.noise,
+          regularization: params.regularization,
+          wInitial: params.wInitial,
+          bInitial: params.bInitial,
+        },
+        metrics: {
+          loss: currentStep.mseLoss,
+          finalWeight: currentStep.w,
+          finalBias: currentStep.b,
+          totalSteps: steps.length,
+          accuracy: Math.max(0.6, 1 - currentStep.mseLoss),
+        },
+      });
+      toast.success('Linear Regression experiment saved to MongoDB! +50 XP', { id: toastId });
+    } catch (err: any) {
+      toast.error('Failed to save experiment', { id: toastId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 select-none">
       {/* Mode Selector Toggle: Free Lab Mode vs 15-Step Guided Tutorial */}
       <div className="bg-midnight border border-mountainside p-1.5 rounded-2xl flex items-center gap-1 shadow-soft">
         <button
           type="button"
           onClick={() => dispatch(setTutorialMode(false))}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             !tutorialMode
               ? 'bg-mountainside text-arctic border border-apres/50 shadow-soft'
               : 'text-slopes hover:text-arctic hover:bg-mountainside/40'
@@ -87,7 +137,7 @@ export const LeftPanel: React.FC = () => {
         <button
           type="button"
           onClick={() => dispatch(setTutorialMode(true))}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
             tutorialMode
               ? 'bg-mountainside text-arctic border border-apres/50 shadow-soft'
               : 'text-slopes hover:text-arctic hover:bg-mountainside/40'
@@ -151,7 +201,7 @@ export const LeftPanel: React.FC = () => {
               type="button"
               onClick={handlePrevTutorialStep}
               disabled={currentTutorialStep === 0}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slopes hover:text-arctic hover:bg-mountainside/50 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slopes hover:text-arctic hover:bg-mountainside/50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
             >
               Previous
             </button>
@@ -160,7 +210,7 @@ export const LeftPanel: React.FC = () => {
               type="button"
               onClick={handleNextTutorialStep}
               disabled={currentTutorialStep >= TUTORIAL_STEPS.length - 1}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-arctic text-midnight hover:bg-slopes transition-all shadow-soft flex items-center gap-1 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-arctic text-midnight hover:bg-slopes transition-all shadow-soft flex items-center gap-1 disabled:opacity-50 cursor-pointer"
             >
               Next Lesson
               <ChevronRight className="w-4 h-4" />
@@ -169,78 +219,123 @@ export const LeftPanel: React.FC = () => {
         </motion.div>
       ) : (
         /* Free Lab Mode: Dataset Generator & Custom Point Editor */
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-midnight border border-mountainside rounded-2xl p-5 shadow-hard space-y-4"
-        >
-          <div className="flex items-center justify-between border-b border-mountainside pb-2">
-            <div className="flex items-center gap-2 text-sm font-bold text-arctic">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              Dataset Generator & Point Editor
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-midnight border border-mountainside rounded-2xl p-5 shadow-hard space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-mountainside pb-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-arctic">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                Dataset Generator & Point Editor
+              </div>
+              <span className="text-xs font-mono text-cyan-400 font-bold">{points.length} Points</span>
             </div>
-            <span className="text-xs font-mono text-cyan-400 font-bold">{points.length} Points</span>
-          </div>
 
-          {/* Preset Buttons */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-arctic">Synthetic Dataset Presets</label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(
-                [
-                  { id: 'positive', label: 'Positive Trend' },
-                  { id: 'negative', label: 'Negative Trend' },
-                  { id: 'noisy', label: 'High Noise' },
-                  { id: 'perfect-line', label: 'Perfect Line' },
-                  { id: 'random', label: 'Random Scatter' },
-                ] as { id: DatasetPresetType; label: string }[]
-              ).map((p) => (
+            {/* Preset Buttons */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-arctic">Synthetic Dataset Presets</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(
+                  [
+                    { id: 'positive', label: 'Positive Trend' },
+                    { id: 'negative', label: 'Negative Trend' },
+                    { id: 'noisy', label: 'High Noise' },
+                    { id: 'perfect-line', label: 'Perfect Line' },
+                    { id: 'random', label: 'Random Scatter' },
+                  ] as { id: DatasetPresetType; label: string }[]
+                ).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => dispatch(setDatasetPreset(p.id))}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-medium border text-left transition-all cursor-pointer ${
+                      params.preset === p.id
+                        ? 'bg-mountainside text-arctic border-cyan-400/80 font-bold'
+                        : 'bg-mountainside/40 text-slopes border-transparent hover:bg-mountainside/80'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Add Custom Point Form */}
+            <form onSubmit={handleAddCustomPoint} className="space-y-2 pt-2 border-t border-mountainside">
+              <label className="text-xs font-semibold text-arctic">Add Custom Point (x, y)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="X"
+                  value={newX}
+                  onChange={(e) => setNewX(e.target.value)}
+                  className="w-full bg-mountainside border border-apres/40 text-arctic text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-400"
+                />
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="Y"
+                  value={newY}
+                  onChange={(e) => setNewY(e.target.value)}
+                  className="w-full bg-mountainside border border-apres/40 text-arctic text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-400"
+                />
                 <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => dispatch(setDatasetPreset(p.id))}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-medium border text-left transition-all ${
-                    params.preset === p.id
-                      ? 'bg-mountainside text-arctic border-cyan-400/80 font-bold'
-                      : 'bg-mountainside/40 text-slopes border-transparent hover:bg-mountainside/80'
-                  }`}
+                  type="submit"
+                  className="p-2 rounded-xl bg-cyan-500 text-midnight font-bold hover:bg-cyan-400 transition-colors cursor-pointer"
+                  title="Add point"
                 >
-                  {p.label}
+                  <Plus className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
+            </form>
+          </motion.div>
 
-          {/* Add Custom Point Form */}
-          <form onSubmit={handleAddCustomPoint} className="space-y-2 pt-2 border-t border-mountainside">
-            <label className="text-xs font-semibold text-arctic">Add Custom Point (x, y)</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                step="0.1"
-                placeholder="X"
-                value={newX}
-                onChange={(e) => setNewX(e.target.value)}
-                className="w-full bg-mountainside border border-apres/40 text-arctic text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-400"
-              />
-              <input
-                type="number"
-                step="0.1"
-                placeholder="Y"
-                value={newY}
-                onChange={(e) => setNewY(e.target.value)}
-                className="w-full bg-mountainside border border-apres/40 text-arctic text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-400"
-              />
-              <button
-                type="submit"
-                className="p-2 rounded-xl bg-cyan-500 text-midnight font-bold hover:bg-cyan-400 transition-colors"
-                title="Add point"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+          {/* Action Card: Save Experiment & Download PDF Report */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-midnight border border-mountainside rounded-2xl p-5 shadow-hard space-y-3"
+          >
+            <div className="flex items-center justify-between border-b border-mountainside pb-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
+                <Save className="w-4 h-4" />
+                Experiment & Report Actions
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                +50 XP
+              </span>
             </div>
-          </form>
-        </motion.div>
+
+            <div className="space-y-2">
+              <Button
+                variant="primary"
+                onClick={handleSaveExperiment}
+                isLoading={saving}
+                className="w-full justify-center bg-amber-500 hover:bg-amber-400 text-midnight font-bold text-xs py-2.5 shadow-soft cursor-pointer"
+                icon={<Save className="w-4 h-4" />}
+              >
+                Save Experiment to MongoDB
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setShowReportModal(true)}
+                className="w-full justify-center text-xs font-bold py-2.5 border-mountainside text-arctic hover:bg-mountainside/60 cursor-pointer"
+                icon={<FileText className="w-4 h-4 text-cyan-400" />}
+              >
+                Download Detailed Report (PDF) 📄
+              </Button>
+            </div>
+          </motion.div>
+        </>
+      )}
+
+      {/* Universal Detailed Report Modal */}
+      {showReportModal && (
+        <UniversalReportModal algorithm="linear-regression" onClose={() => setShowReportModal(false)} />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { togglePlayPause, stepForward, stepBackward, resetPlayback } from './linearRegressionSlice';
+import { togglePlayPause, stepForward, stepBackward, resetPlayback, setParams } from './linearRegressionSlice';
 import { LeftPanel } from './components/LeftPanel';
 import { Center3DScene } from './components/Center3DScene';
 import { ComparisonView } from './components/ComparisonView';
@@ -10,12 +10,21 @@ import { LiveGraphsPanel } from './components/LiveGraphsPanel';
 import { MathFormulaPanel } from './components/MathFormulaPanel';
 import { ExplanationPanel } from './components/ExplanationPanel';
 import { ScrollStorytelling } from './components/ScrollStorytelling';
+import RecentExperimentsPanel from '../../components/experiments/RecentExperimentsPanel';
+import { SavedExperiment } from '../../services/experimentService';
 import { Brain } from 'lucide-react';
 
 const LinearRegressionLab: React.FC = () => {
   const dispatch = useAppDispatch();
   const lrState = useAppSelector((state) => state.linearRegression);
   const comparisonMode = lrState?.comparisonMode ?? false;
+
+  // Restore Experiment Handler
+  const handleLoadExperiment = (exp: SavedExperiment) => {
+    if (exp.parameters) {
+      dispatch(setParams(exp.parameters));
+    }
+  };
 
   // Keyboard Shortcuts (Space: Play/Pause, Left/Right: Step, R: Reset)
   useEffect(() => {
@@ -71,7 +80,7 @@ const LinearRegressionLab: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Layout: Left Panel | Center (3D Scene or Dual Comparison) | Right Panel */}
+      {/* Main Layout: Left Panel | Center | Right Panel & Recent Experiments */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Panel */}
         <div className="xl:col-span-3">
@@ -83,9 +92,10 @@ const LinearRegressionLab: React.FC = () => {
           {comparisonMode ? <ComparisonView /> : <Center3DScene />}
         </div>
 
-        {/* Right Panel */}
-        <div className="xl:col-span-3">
+        {/* Right Panel & Algorithm Experiments History */}
+        <div className="xl:col-span-3 space-y-6">
           <RightPanel />
+          <RecentExperimentsPanel algorithm="linear-regression" onLoadExperiment={handleLoadExperiment} />
         </div>
       </div>
 
