@@ -5,6 +5,7 @@ import {
   setIsPlaying,
   setCurrentEpoch,
   resetSimulation,
+  updateConfig,
 } from './logisticRegressionSlice';
 import { ViewMode } from './types';
 import LeftPanel from './components/LeftPanel';
@@ -14,28 +15,33 @@ import BottomPanel from './components/BottomPanel';
 import SigmoidExplorer from './components/SigmoidExplorer';
 import ComparisonView from './components/ComparisonView';
 import UnderfittingOverfittingView from './components/UnderfittingOverfittingView';
-import QuizPanel from './components/QuizPanel';
 import PageContainer from '../../components/layout/PageContainer';
+import RecentExperimentsPanel from '../../components/experiments/RecentExperimentsPanel';
+import { SavedExperiment } from '../../services/experimentService';
 import {
   Brain,
   ArrowLeft,
   Sliders,
   Activity,
   Layers,
-  HelpCircle,
   Eye,
-  BookOpen,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const LogisticRegressionLab: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { viewMode, isPlaying, currentEpoch, trajectory } = useAppSelector(
+  const { viewMode, isPlaying, currentEpoch, trajectory, config, points } = useAppSelector(
     (state) => state.logisticRegression
   );
 
   const maxEpoch = trajectory.length > 0 ? trajectory.length - 1 : 0;
+
+  const handleLoadExperiment = (exp: SavedExperiment) => {
+    if (exp.parameters) {
+      dispatch(updateConfig(exp.parameters));
+    }
+  };
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -59,13 +65,13 @@ export const LogisticRegressionLab: React.FC = () => {
   }, [isPlaying, currentEpoch, maxEpoch, dispatch]);
 
   return (
-    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-4 px-4 space-y-4 font-sans">
+    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-4 px-4 space-y-4 font-sans select-none">
       {/* Top Header Bar */}
       <header className="flex flex-col md:flex-row items-center justify-between gap-4 p-3 bg-midnight/90 backdrop-blur-md rounded-3xl border border-apres/30 shadow-2xl">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-mountainside/50 text-slopes hover:text-arctic hover:bg-mountainside border border-apres/30 transition-all"
+            className="p-2.5 rounded-2xl bg-mountainside/50 text-slopes hover:text-arctic hover:bg-mountainside border border-apres/30 transition-all cursor-pointer"
             title="Return to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -86,30 +92,31 @@ export const LogisticRegressionLab: React.FC = () => {
           </div>
         </div>
 
-        {/* View Mode Navigation Tabs */}
-        <div className="flex items-center p-1 bg-mountainside/40 rounded-2xl border border-apres/30 overflow-x-auto scrollbar-hide">
-          {(
-            [
-              ['playground', 'Playground', Sliders],
-              ['sigmoid', 'Sigmoid Curve', Activity],
-              ['comparison', 'Model Compare', Eye],
-              ['underfitting', 'Model Fit', Layers],
-              ['quiz', 'Quiz', HelpCircle],
-            ] as [ViewMode, string, React.ElementType][]
-          ).map(([mode, label, Icon]) => (
-            <button
-              key={mode}
-              onClick={() => dispatch(setViewMode(mode))}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all whitespace-nowrap ${
-                viewMode === mode
-                  ? 'bg-arctic text-midnight font-bold shadow-md'
-                  : 'text-slopes hover:text-arctic'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center space-x-3">
+          {/* View Mode Navigation Tabs */}
+          <div className="flex items-center p-1 bg-mountainside/40 rounded-2xl border border-apres/30 overflow-x-auto scrollbar-hide">
+            {(
+              [
+                ['playground', 'Playground', Sliders],
+                ['sigmoid', 'Sigmoid Curve', Activity],
+                ['comparison', 'Model Compare', Eye],
+                ['underfitting', 'Model Fit', Layers],
+              ] as [ViewMode, string, React.ElementType][]
+            ).map(([mode, label, Icon]) => (
+              <button
+                key={mode}
+                onClick={() => dispatch(setViewMode(mode))}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+                  viewMode === mode
+                    ? 'bg-arctic text-midnight font-bold shadow-md'
+                    : 'text-slopes hover:text-arctic'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -137,6 +144,9 @@ export const LogisticRegressionLab: React.FC = () => {
 
             {/* Bottom Playback & Metrics Panel */}
             <BottomPanel />
+
+            {/* Algorithm Specific Recent Experiments */}
+            <RecentExperimentsPanel algorithm="logistic-regression" onLoadExperiment={handleLoadExperiment} />
           </div>
         )}
 
@@ -155,12 +165,6 @@ export const LogisticRegressionLab: React.FC = () => {
         {viewMode === 'underfitting' && (
           <div className="w-full py-2">
             <UnderfittingOverfittingView />
-          </div>
-        )}
-
-        {viewMode === 'quiz' && (
-          <div className="w-full py-4">
-            <QuizPanel />
           </div>
         )}
       </main>
