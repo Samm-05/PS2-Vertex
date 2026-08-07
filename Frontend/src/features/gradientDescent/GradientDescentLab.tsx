@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useAppDispatch } from '../../app/hooks';
-import { togglePlayPause, stepForward, stepBackward, resetPlayback } from './gradientDescentSlice';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { togglePlayPause, stepForward, stepBackward, resetPlayback, setParams } from './gradientDescentSlice';
 import { LeftPanel } from './components/LeftPanel';
 import { Center3DScene } from './components/Center3DScene';
 import { RightPanel } from './components/RightPanel';
@@ -9,10 +9,19 @@ import { LiveGraphsPanel } from './components/LiveGraphsPanel';
 import { MathFormulaPanel } from './components/MathFormulaPanel';
 import { ExplanationPanel } from './components/ExplanationPanel';
 import { ScrollStorytelling } from './components/ScrollStorytelling';
-import { Brain, Sparkles } from 'lucide-react';
+import RecentExperimentsPanel from '../../components/experiments/RecentExperimentsPanel';
+import { SavedExperiment } from '../../services/experimentService';
+import { Brain } from 'lucide-react';
 
 const GradientDescentLab: React.FC = () => {
   const dispatch = useAppDispatch();
+  const gdState = useAppSelector((state) => state.gradientDescent);
+
+  const handleLoadExperiment = (exp: SavedExperiment) => {
+    if (exp.parameters) {
+      dispatch(setParams(exp.parameters));
+    }
+  };
 
   // Keyboard Shortcuts (Space: Play/Pause, Left/Right: Step, R: Reset)
   useEffect(() => {
@@ -80,9 +89,10 @@ const GradientDescentLab: React.FC = () => {
           <Center3DScene />
         </div>
 
-        {/* Right Panel */}
-        <div className="xl:col-span-3">
+        {/* Right Panel & Recent Experiments History */}
+        <div className="xl:col-span-3 space-y-6">
           <RightPanel />
+          <RecentExperimentsPanel algorithm="gradient-descent" onLoadExperiment={handleLoadExperiment} />
         </div>
       </div>
 
