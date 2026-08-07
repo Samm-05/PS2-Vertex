@@ -20,10 +20,10 @@ export const WelcomeHero: React.FC<WelcomeHeroProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const name = userFirstName || 'Learner';
-  const streakVal = streak ?? 5;
-  const completedVal = completedAlgorithms ?? 3;
-  const pointsVal = totalPoints ?? 450;
-  const moduleVal = currentModule || 'Linear Regression';
+  const streakVal = typeof streak === 'number' ? streak : 0;
+  const completedVal = typeof completedAlgorithms === 'number' ? completedAlgorithms : 0;
+  const pointsVal = typeof totalPoints === 'number' ? totalPoints : completedVal * 150;
+  const moduleVal = currentModule || 'Intro to Machine Learning';
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -47,6 +47,7 @@ export const WelcomeHero: React.FC<WelcomeHeroProps> = ({
 
   const overallProgressPct = Math.min(100, Math.round((completedVal / 6) * 100));
   const strokeDashoffset = 283 - (283 * overallProgressPct) / 100;
+  const completedLessonsCount = completedVal * 10;
 
   return (
     <div
@@ -63,7 +64,7 @@ export const WelcomeHero: React.FC<WelcomeHeroProps> = ({
             {/* Streak Badge */}
             <div className="hero-reveal-item inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-xs font-mono font-bold">
               <Flame className="w-4 h-4 fill-warning" />
-              <span>{streakVal} Day Streak</span>
+              <span>{streakVal} {streakVal === 1 ? 'Day Streak' : 'Days Streak'}</span>
             </div>
 
             {/* Total Points Badge */}
@@ -124,7 +125,7 @@ export const WelcomeHero: React.FC<WelcomeHeroProps> = ({
               </div>
               <div className="flex items-center gap-2 text-slopes">
                 <BookOpen className="w-4 h-4 text-arctic" />
-                <span>12 Lessons Complete</span>
+                <span>{completedLessonsCount} / 60 Lessons</span>
               </div>
             </div>
           </div>

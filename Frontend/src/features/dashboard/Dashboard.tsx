@@ -15,15 +15,41 @@ import ActivityFeed from './ActivityFeed';
 import QuickActionsGrid from './QuickActionsGrid';
 import UpcomingModulesGrid from './UpcomingModulesGrid';
 
+const curriculumSequence = [
+  { id: 'intro-ml', title: 'Intro to Machine Learning', subtitle: 'Paradigm Shift & End-to-End Pipeline', path: '/coach/module/intro-ml' },
+  { id: 'linear-regression', title: 'Linear Regression & Cost Minimization', subtitle: 'OLS Cost Function, Derivation & Regularization', path: '/coach/module/linear-regression' },
+  { id: 'gradient-descent', title: 'Gradient Descent & Optimization', subtitle: 'SGD, Mini-Batch, Momentum & Adam Solvers', path: '/coach/module/gradient-descent' },
+  { id: 'neural-network', title: 'Neural Network Foundations', subtitle: 'Perceptrons, Activations & Backpropagation', path: '/coach/module/neural-network' },
+  { id: 'logistic-regression', title: 'Logistic Regression & Classification', subtitle: 'Sigmoid Mapping, Log-Loss & ROC Curves', path: '/coach/module/logistic-regression' },
+  { id: 'clustering', title: 'Clustering & Unsupervised Learning', subtitle: 'K-Means, WCSS Inertia & DBSCAN Density', path: '/coach/module/clustering' },
+];
+
 const Dashboard: React.FC = () => {
   const dispatch = useAppDispatch();
   const { stats, recentActivity } = useAppSelector((state) => state.dashboard);
   const { user } = useAppSelector((state) => state.auth);
+  const { completedModules } = useAppSelector((state) => state.coach);
 
   useEffect(() => {
     dispatch(fetchDashboardStats());
     dispatch(fetchRecentActivity());
   }, [dispatch]);
+
+  const completedList = Array.isArray(completedModules) ? completedModules : [];
+  const completedCount = completedList.length;
+
+  // Active module is the first uncompleted module in sequence
+  const activeModule = curriculumSequence.find((m) => !completedList.includes(m.id)) || curriculumSequence[curriculumSequence.length - 1];
+
+  const totalXP = (stats?.totalPoints && stats.totalPoints > 0)
+    ? stats.totalPoints
+    : completedCount * 150 + (user?.points || 0);
+
+  const streak = (typeof stats?.streak === 'number' && stats.streak > 0)
+    ? stats.streak
+    : (typeof user?.streak === 'number' ? user.streak : (completedCount > 0 ? 1 : 0));
+
+  const progressPct = Math.min(100, Math.round((completedCount / 6) * 100));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -48,7 +74,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-6 space-y-8">
+    <PageContainer className="relative min-h-screen bg-midnight text-arctic py-6 space-y-8 select-none">
       {/* Subtle R3F 3D Background Canvas */}
       <Dashboard3DCanvas />
 
@@ -62,26 +88,28 @@ const Dashboard: React.FC = () => {
         <motion.div variants={itemVariants}>
           <WelcomeHero
             userFirstName={user?.firstName}
-            streak={stats?.streak ?? 5}
-            completedAlgorithms={stats?.completedAlgorithms ?? 3}
-            totalPoints={stats?.totalPoints ?? 450}
-            currentModule="Linear Regression"
+            streak={streak}
+            completedAlgorithms={completedCount}
+            totalPoints={totalXP}
+            currentModule={activeModule.title}
           />
         </motion.div>
 
         {/* SECTION 2: CONTINUE LEARNING */}
         <motion.div variants={itemVariants}>
           <ContinueLearningCard
-            algorithmId="linear-regression"
-            title="Linear Regression & Cost Minimization"
-            progressPct={85}
-            timeRemaining="12 mins remaining"
+            algorithmId={activeModule.id}
+            title={activeModule.title}
+            subtitle={activeModule.subtitle}
+            progressPct={progressPct}
+            timeRemaining={`${Math.max(5, (6 - completedCount) * 15)} mins remaining`}
+            targetPath={activeModule.path}
           />
         </motion.div>
 
         {/* SECTION 3: LEARNING PATH ROADMAP */}
         <motion.div variants={itemVariants}>
-          <LearningPathRoadmap />
+          <LearningPathRoadmap completedModules={completedList} />
         </motion.div>
 
         {/* SECTION 4 & SECTION 5: RECOMMENDED MODULE & DAILY CHALLENGE */}
