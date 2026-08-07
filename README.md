@@ -436,9 +436,9 @@ Contributions are welcome!
 | Name | Role | GitHub |
 |---|---|---|
 | _Samyak Mahatme_ | _Team - leader_ | 
-| _Lavanya Vaidya_  | 
-| _Ashutosh Nanoti_ | 
-| _Raunak Pantawne_ |  
+| _Lavanya Vaidya_  | Member
+| _Ashutosh Nanoti_ | Member
+| _Raunak Pantawne_ |  Member
 
 ---
 
