@@ -25,6 +25,7 @@ import LinearRegressionLab from '../features/linearRegression/LinearRegressionLa
 import LogisticRegressionLab from '../features/logisticRegression/LogisticRegressionLab';
 import NeuralNetworkLab from '../features/neuralNetwork/NeuralNetworkLab';
 import OverfittingLab from '../features/overfittingLab/OverfittingLab';
+import KMeansLab from '../features/kmeansLab/KMeansLab';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -51,6 +52,7 @@ const AppRoutes: React.FC = () => {
             <Route path="logistic-lab" element={<LogisticRegressionLab />} />
             <Route path="overfitting-lab" element={<OverfittingLab />} />
             <Route path="nn-lab" element={<NeuralNetworkLab />} />
+            <Route path="kmeans-lab" element={<KMeansLab />} />
           </Route>
 
           {/* Redirect Direct Lab Routes to Playground */}
@@ -59,6 +61,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/logistic-regression" element={<Navigate to="/playground/logistic-lab" replace />} />
           <Route path="/gradient-descent" element={<Navigate to="/playground/gd-lab" replace />} />
           <Route path="/overfitting-lab" element={<Navigate to="/playground/overfitting-lab" replace />} />
+          <Route path="/kmeans" element={<Navigate to="/playground/kmeans-lab" replace />} />
+          <Route path="/kmeans-lab" element={<Navigate to="/playground/kmeans-lab" replace />} />
 
           {/* Legacy Simulator Redirects */}
           <Route path="/simulator/neural-network" element={<Navigate to="/playground/nn-lab" replace />} />
@@ -67,6 +71,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/simulator/logistic-regression" element={<Navigate to="/playground/logistic-lab" replace />} />
           <Route path="/simulator/logistic" element={<Navigate to="/playground/logistic-lab" replace />} />
           <Route path="/simulator/overfitting" element={<Navigate to="/playground/overfitting-lab" replace />} />
+          <Route path="/simulator/kmeans" element={<Navigate to="/playground/kmeans-lab" replace />} />
           <Route path="/simulator/*" element={<Navigate to="/playground" replace />} />
 
           {/* Practice Module & Quiz Routes */}
