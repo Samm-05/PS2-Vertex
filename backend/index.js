@@ -11,6 +11,8 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const simulationRoutes = require('./routes/simulations');
 const practiceRoutes = require('./routes/practice');
 const notificationRoutes = require('./routes/notifications');
+const experimentRoutes = require('./routes/experiments');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 
@@ -61,6 +63,8 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/simulations', simulationRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/experiments', experimentRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Base Health check endpoint
 app.get('/', (req, res) => {
